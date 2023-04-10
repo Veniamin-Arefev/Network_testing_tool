@@ -1,0 +1,20 @@
+Hello message:
+message_type:hello
+hostname:<hostname>
+ip:<ip>
+
+Measure message:
+message_type:measure
+target:<ip>
+nodes:[nodes...]
+
+Measure answer message:
+message_type:measure_answer
+nodes:[nodes...]
+speed:<speed>
+rtt:<rtt>
+
+Info/error message:
+message_type:info
+text:<text>
+
