@@ -25,14 +25,14 @@ def start_server_daemon():
 
 
 def test_speed(ip):
-    cmd_str = "iperf -u -b 10G -c {0}"
+    cmd_str = "iperf -u -f K -b 10G -c {0}"
     proc = subprocess.run(cmd_str.format(ip), shell=True, capture_output=True)
     lines = proc.stdout.decode().split("\n")
     words = list(filter(lambda x: len(x) > 0, map(lambda x: x.split(), lines)))
 
-    speed, units = words[-1][-2:]
+    speed = words[-1][-6]
 
-    return speed, units
+    return speed
 
 
 def test_rtt(ip):

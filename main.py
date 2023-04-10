@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import pathlib
+import time
 
 import network
 from constants_and_variables import set_up_logger
@@ -11,9 +12,8 @@ arg_parser.add_argument("-v", "--verbose", action="store_true", help="Verbose ou
 
 arg_parser.add_argument("type", choices=["client", "server"], default="client", help="Type of this node")
 
-arg_parser.add_argument("hostname", help="Name of this node")
-
 # client
+arg_parser.add_argument("--hostname", nargs="?", help="Name of this node")
 arg_parser.add_argument("--host", nargs="?", help="Server ip")
 # server
 arg_parser.add_argument("--graph", nargs="?", type=pathlib.Path, help="Topology file")
@@ -24,6 +24,10 @@ set_up_logger()
 
 try:
     if args.type == "client":
+        if args.hostname is None:
+            print("Missing hostname")
+            exit(1)
+
         if args.host is None:
             print("Missing host ip")
             exit(1)
@@ -38,4 +42,5 @@ try:
         asyncio.run(network.main_server(args.graph))
 
 except KeyboardInterrupt:
+    time.sleep(5)
     print("Interrupt by keyboard")

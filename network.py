@@ -85,6 +85,7 @@ async def try_to_perform_test():
             id_to_ips=id_to_ips,
             id_to_client=id_to_client,
         ))
+        nx.write_gml(graph, "measured.gml")
 
 
 async def handle_connection_from_client(reader, writer):
@@ -192,7 +193,6 @@ async def handle_connection_to_server(reader, writer, hostname: str):
 
 
 async def main_server(graph_path: pathlib.PosixPath):
-    cmd_utility.start_server()
     global graph
     graph = nx.read_gml(graph_path, "id")
 
