@@ -125,8 +125,8 @@ async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]],
     for team_index, team in enumerate(teams):
         cur_team_links, cur_team_machines = team
         for n1, n2 in itertools.combinations(cur_team_machines, 2):
-            test_speed_in_net(n1, n2, teams_nets[team_index], cur_team_links)
+            await test_speed_in_net(n1, n2, teams_nets[team_index], cur_team_links)
 
     # can test m_only and write to graph
     for n1, n2 in m_only_edges:
-        test_speed_direct(n1, n2, teams_nets)
+        await test_speed_direct(n1, n2, teams_nets)
