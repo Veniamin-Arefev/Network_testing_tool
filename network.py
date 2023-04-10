@@ -124,10 +124,17 @@ async def handle_connection_from_client(reader, writer):
                         speed = int(message_fields["speed"])
                         rtt = float(message_fields["rtt"])
 
+                        delay_average = rtt / (len(nodes) - 1) / 2
+
                         for i in range(len(nodes) - 1):
                             cur_speed = graph[nodes[i]][nodes[i + 1]].get("speed", 0)
-                            if cur_speed < speed:
+                            if cur_speed > speed:
                                 graph[nodes[i]][nodes[i + 1]]["speed"] = speed
+
+                            cur_delay = graph[nodes[i]][nodes[i + 1]].get("delay", 0)
+                            if cur_delay > delay_average:
+                                graph[nodes[i]][nodes[i + 1]]["delay"] = delay_average
+
                             # todo write rtt to graph
 
                     case _:
