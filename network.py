@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import pathlib
 import socket
 
@@ -84,9 +83,8 @@ async def try_to_perform_test():
             graph=graph,
             id_to_ips=id_to_ips,
             id_to_client=id_to_client,
+            save_file=True,
         ))
-        main_logger.info("Done measurement")
-        nx.write_gml(graph, "measured.gml")
 
 
 async def handle_connection_from_client(reader, writer):

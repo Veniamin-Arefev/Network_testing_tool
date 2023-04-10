@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import pathlib
-import time
 
 import psutil
 

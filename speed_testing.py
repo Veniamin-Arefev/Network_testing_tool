@@ -3,14 +3,15 @@ import collections
 import itertools
 import ipaddress
 
-import matplotlib.pyplot as plt
 import networkx as nx
 
 import network
 from net_io_helpers import IOHelper
+from constants_and_variables import main_logger
 
 
-async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]], id_to_client: dict[int, IOHelper]):
+async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]], id_to_client: dict[int, IOHelper],
+                    save_file: bool = False):
     def get_networks_for_nodes(nodes: list[int], excluded_nets: list = None):
         cur_networks = sum([
             [
@@ -130,3 +131,7 @@ async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]],
     # can test m_only and write to graph
     for n1, n2 in m_only_edges:
         await test_speed_direct(n1, n2, teams_nets)
+
+    main_logger.info("Done measurement")
+    if save_file:
+        nx.write_gml(graph, "measured.gml")
