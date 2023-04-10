@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import pathlib
 import socket
 
@@ -176,11 +177,10 @@ async def handle_connection_to_server(reader, writer, hostname: str):
                         raise ValueError("Bad message")
 
             except (ValueError, KeyError) as e:
-                await send_text_message(io_helper, "The error has occurred:" + str(e))
+                main_logger.debug(e)
 
             except (RuntimeError,) as e:
-                await send_text_message(io_helper, str(e))
-                break
+                main_logger.debug(e)
 
     except asyncio.TimeoutError:
         main_logger.warning(f"Connection from server timed out")
