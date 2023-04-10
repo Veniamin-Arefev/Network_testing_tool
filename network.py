@@ -128,14 +128,12 @@ async def handle_connection_from_client(reader, writer):
 
                         for i in range(len(nodes) - 1):
                             cur_speed = graph[nodes[i]][nodes[i + 1]].get("speed", 0)
-                            if cur_speed > speed:
+                            if cur_speed < speed:
                                 graph[nodes[i]][nodes[i + 1]]["speed"] = speed
 
                             cur_delay = graph[nodes[i]][nodes[i + 1]].get("delay", 0)
-                            if cur_delay > delay_average:
+                            if cur_delay < delay_average:
                                 graph[nodes[i]][nodes[i + 1]]["delay"] = delay_average
-
-                            # todo write rtt to graph
 
                     case _:
                         raise ValueError("Bad message")

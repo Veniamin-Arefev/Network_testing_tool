@@ -35,7 +35,7 @@ async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]],
 
         # return n1 * 1000 + n2 + 0.0001, cur_net, nodes
         await network.send_measure(id_to_client[n1], target=str(target), nodes=nodes)
-        await asyncio.sleep(25)
+        await asyncio.sleep(35)
 
     async def test_speed_in_net(n1, n2, net, links):
         cur_net = net
@@ -44,7 +44,7 @@ async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]],
         # return n1 * 1000 + n2 + 0.0001, cur_net, nodes
 
         await network.send_measure(id_to_client[n1], target=str(target), nodes=nodes)
-        await asyncio.sleep(25)
+        await asyncio.sleep(35)
 
     def get_link_path_nodes(n1, n2, links):
         min_dist = {n1: 0}
