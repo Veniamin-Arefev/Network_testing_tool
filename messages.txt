@@ -1,7 +1,7 @@
 Hello message:
 message_type:hello
 hostname:<hostname>
-ip:<ip>
+ips:[(ip, mask), ...]
 
 Measure message:
 message_type:measure

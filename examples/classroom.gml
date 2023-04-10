@@ -15,11 +15,6 @@ graph [
     hostname "node2"
     type "machine"
   ]
-  node [
-    id 3
-    hostname "node3"
-    type "machine"
-  ]
   edge [
     source 0
     target 1
@@ -27,9 +22,5 @@ graph [
   edge [
     source 0
     target 2
-  ]
-  edge [
-    source 0
-    target 3
   ]
 ]

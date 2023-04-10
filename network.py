@@ -54,7 +54,7 @@ async def send_hello(io_helper: IOHelper, hostname: str):
 
     message_fields = {"message_type": "hello",
                       "hostname": hostname,
-                      "data": data,
+                      "ips": data,
                       }
     await send_dict(io_helper, message_fields)
 
@@ -79,6 +79,7 @@ async def send_measure_answer(io_helper: IOHelper, nodes: list[int], speed: str,
 async def try_to_perform_test():
     machine_nodes = list(filter(lambda x: x[1].get("type", "") == "machine", graph.nodes(data=True)))
     if len(id_to_ips) == len(machine_nodes):
+        main_logger.info("Started measurement")
         asyncio.create_task(speed_testing.main_loop(
             graph=graph,
             id_to_ips=id_to_ips,
@@ -113,7 +114,7 @@ async def handle_connection_from_client(reader, writer):
                         client_id = hostname_to_id[message_fields["hostname"]]
 
                         id_to_client[client_id] = io_helper
-                        id_to_ips[client_id] = message_fields["ip"]
+                        id_to_ips[client_id] = message_fields["ips"]
 
                         await try_to_perform_test()
                     case "measure_results":
