@@ -28,7 +28,7 @@ try:
             print("Missing host ip")
             exit(1)
 
-        asyncio.run(network.main_client(args.hostname))
+        asyncio.run(network.main_client(args.hostname, args.host))
 
     elif args.type == "server":
         if args.graph is None:

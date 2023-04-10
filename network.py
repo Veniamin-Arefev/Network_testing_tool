@@ -206,10 +206,10 @@ async def main_server(graph_path: pathlib.PosixPath):
     await server_plain.wait_closed()
 
 
-async def main_client(hostname: str):
+async def main_client(hostname: str, host: str):
     cmd_utility.start_server()
 
-    reader, writer = await asyncio.open_connection(host=HOST, port=PORT, family=socket.AF_INET)
+    reader, writer = await asyncio.open_connection(host=host, port=PORT, family=socket.AF_INET)
 
     # todo stop speed testing server
     cmd_utility.stop_server()
