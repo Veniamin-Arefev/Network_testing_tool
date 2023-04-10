@@ -102,6 +102,7 @@ async def handle_connection_from_client(reader, writer):
                 break
             message: str = data.decode()
             main_logger.debug(f"Received {len(message):07} bytes from {remote_address_str}")
+            main_logger.debug(f"Received {message!r} from {remote_address_str}")
 
             try:
                 message_fields = parse_message_to_dict(message)
@@ -158,6 +159,7 @@ async def handle_connection_to_server(reader, writer, hostname: str):
                 break
             message: str = data.decode()
             main_logger.debug(f"Received {len(message):07} bytes from server")
+            main_logger.debug(f"Received {message!r} from server")
 
             try:
                 message_fields = parse_message_to_dict(message)
