@@ -191,7 +191,7 @@ async def handle_connection_to_server(reader, writer, hostname: str):
 async def main_server(graph_path: pathlib.PosixPath):
     # speed_testing.start_server()
     global graph
-    graph: nx.Graph = nx.read_gml(graph_path, "id")
+    graph = nx.read_gml(graph_path, "id")
 
     for node_id, node_data in graph.nodes(data=True):
         hostname_to_id[node_data["hostname"]] = node_id
