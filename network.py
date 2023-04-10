@@ -85,6 +85,7 @@ async def try_to_perform_test():
             id_to_ips=id_to_ips,
             id_to_client=id_to_client,
         ))
+        main_logger.info("Done measurement")
         nx.write_gml(graph, "measured.gml")
 
 
@@ -118,9 +119,9 @@ async def handle_connection_from_client(reader, writer):
                         id_to_ips[client_id] = message_fields["ips"]
 
                         await try_to_perform_test()
-                    case "measure_results":
+                    case "measure_answer":
                         nodes = message_fields["nodes"]
-                        speed = float(message_fields["speed"])
+                        speed = int(message_fields["speed"])
                         rtt = float(message_fields["rtt"])
 
                         for i in range(len(nodes) - 1):
