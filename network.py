@@ -189,7 +189,7 @@ async def handle_connection_to_server(reader, writer, hostname: str):
 
 
 async def main_server(graph_path: pathlib.PosixPath):
-    # speed_testing.start_server()
+    cmd_utility.start_server()
     global graph
     graph = nx.read_gml(graph_path, "id")
 
@@ -207,12 +207,12 @@ async def main_server(graph_path: pathlib.PosixPath):
 
 
 async def main_client(hostname: str):
-    # speed_testing.start_server()
+    cmd_utility.start_server()
 
     reader, writer = await asyncio.open_connection(host=HOST, port=PORT, family=socket.AF_INET)
 
     # todo stop speed testing server
-    # speed_testing.stop_server()
+    cmd_utility.stop_server()
 
     # all other work would be done by server
     await handle_connection_to_server(reader, writer, hostname)

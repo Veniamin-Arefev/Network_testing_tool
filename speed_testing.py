@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import itertools
 import ipaddress
@@ -27,21 +28,23 @@ async def main_loop(graph: nx.Graph, id_to_ips: dict[int, dict[str, list[str]]],
             if ip in net:
                 return ip
 
-    def test_speed_direct(n1, n2, excluded_nets):
+    async def test_speed_direct(n1, n2, excluded_nets):
         cur_net = get_networks_for_nodes([n1, n2], excluded_nets)[0]
         nodes = [n1, n2]
         target = get_node_ip_in_network(n2, cur_net)
 
         # return n1 * 1000 + n2 + 0.0001, cur_net, nodes
         await network.send_measure(id_to_client[n1], target=str(target), nodes=nodes)
+        await asyncio.sleep(25)
 
-    def test_speed_in_net(n1, n2, net, links):
+    async def test_speed_in_net(n1, n2, net, links):
         cur_net = net
         nodes = get_link_path_nodes(n1, n2, links)
         target = get_node_ip_in_network(n2, cur_net)
         # return n1 * 1000 + n2 + 0.0001, cur_net, nodes
 
         await network.send_measure(id_to_client[n1], target=str(target), nodes=nodes)
+        await asyncio.sleep(25)
 
     def get_link_path_nodes(n1, n2, links):
         min_dist = {n1: 0}
