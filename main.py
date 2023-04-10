@@ -3,6 +3,8 @@ import asyncio
 import pathlib
 import time
 
+import psutil
+
 import network
 from constants_and_variables import set_up_logger
 
@@ -42,5 +44,7 @@ try:
         asyncio.run(network.main_server(args.graph))
 
 except KeyboardInterrupt:
-    time.sleep(5)
+    for proc in psutil.Process().children():
+        proc.kill()
+        proc.wait()
     print("Interrupt by keyboard")
