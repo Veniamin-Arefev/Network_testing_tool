@@ -7,7 +7,7 @@ import networkx as nx
 import psutil
 
 import cmd_utility
-import speed_testing
+import main_calculations
 from constants_and_variables import *
 from net_io_helpers import *
 
@@ -17,7 +17,8 @@ id_to_ips: dict[int, dict[str, list[str]]] = dict()
 hostname_to_id: dict[str, int] = dict()
 id_to_hostname: dict[int, str] = dict()
 
-graph: nx.Graph
+phys_graph: nx.Graph
+vm_mapping_graph: nx.Graph
 
 
 def parse_message_to_dict(message: str) -> dict:
@@ -75,14 +76,23 @@ async def send_measure_answer(io_helper: IOHelper, nodes: list[int], speed: str,
     await send_dict(io_helper, message_fields)
 
 
+async def send_start_vms(io_helper: IOHelper, hostnames: list[int], nets: list[list[tuple]]):
+    message_fields = {"message_type": "start_vms",
+                      "hostnames": hostnames,
+                      "nets": nets,
+                      }
+    await send_dict(io_helper, message_fields)
+
+
 async def try_to_perform_test():
-    machine_nodes = list(filter(lambda x: x[1].get("type", "") == "machine", graph.nodes(data=True)))
+    machine_nodes = list(filter(lambda x: x[1].get("type", "") == "machine", phys_graph.nodes(data=True)))
     if len(id_to_ips) == len(machine_nodes):
-        main_logger.info("Started measurement")
-        asyncio.create_task(speed_testing.main_loop(
-            graph=graph,
+        asyncio.create_task(main_calculations.main_loop(
+            phys_graph=phys_graph,
+            vm_mapping_graph=vm_mapping_graph,
             id_to_ips=id_to_ips,
             id_to_client=id_to_client,
+            hostname_to_id=hostname_to_id,
             save_file=True,
         ))
 
@@ -125,13 +135,13 @@ async def handle_connection_from_client(reader, writer):
                         delay_average = rtt / (len(nodes) - 1) / 2
 
                         for i in range(len(nodes) - 1):
-                            cur_speed = graph[nodes[i]][nodes[i + 1]].get("speed", 0)
+                            cur_speed = phys_graph[nodes[i]][nodes[i + 1]].get("speed", 0)
                             if cur_speed < speed:
-                                graph[nodes[i]][nodes[i + 1]]["speed"] = speed
+                                phys_graph[nodes[i]][nodes[i + 1]]["speed"] = speed
 
-                            cur_delay = graph[nodes[i]][nodes[i + 1]].get("delay", 0)
+                            cur_delay = phys_graph[nodes[i]][nodes[i + 1]].get("delay", 0)
                             if cur_delay < delay_average:
-                                graph[nodes[i]][nodes[i + 1]]["delay"] = delay_average
+                                phys_graph[nodes[i]][nodes[i + 1]]["delay"] = delay_average
 
                     case _:
                         raise ValueError("Bad message")
@@ -179,6 +189,15 @@ async def handle_connection_to_server(reader, writer, hostname: str):
                         delay = cmd_utility.test_rtt(target_ip)
 
                         await send_measure_answer(io_helper, nodes, speed, delay)
+                    case "start_vms":
+                        cmd_utility.prepare_for_vms()
+
+                        hostnames = message_fields["hostnames"]
+                        nets = message_fields["nets"]
+
+                        for index in range(len(hostnames)):
+                            cmd_utility.start_specific_vm(hostnames[index], nets[index])
+
                     case _:
                         raise ValueError("Bad message")
 
@@ -196,11 +215,13 @@ async def handle_connection_to_server(reader, writer, hostname: str):
     writer.close()
 
 
-async def main_server(graph_path: pathlib.PosixPath):
-    global graph
-    graph = nx.read_gml(graph_path, "id")
+async def main_server(phys_graph_path: pathlib.PosixPath, vm_mapping_graph_path: pathlib.PosixPath):
+    global phys_graph
+    global vm_mapping_graph
+    phys_graph = nx.read_gml(phys_graph_path, "id")
+    vm_mapping_graph = nx.read_gml(vm_mapping_graph_path, "id")
 
-    for node_id, node_data in graph.nodes(data=True):
+    for node_id, node_data in phys_graph.nodes(data=True):
         hostname_to_id[node_data["hostname"]] = node_id
         id_to_hostname[node_id] = node_data["hostname"]
 

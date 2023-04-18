@@ -1,1 +1,1 @@
-python3 main.py client node1 --graph  examples/graph.gml
+python3 main.py client --hostname node1 --host 10.16.134.2

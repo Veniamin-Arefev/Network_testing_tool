@@ -1,1 +1,1 @@
-python3 main.py server node0 --graph  examples/graph.gml
+python3 main.py server --graph examples/graph.gml
