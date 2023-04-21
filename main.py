@@ -47,7 +47,7 @@ try:
 
         asyncio.run(network.main_server(args.phys_graph, args.vm_graph))
 
-except KeyboardInterrupt:
+except (KeyboardInterrupt, Exception):
     for proc in psutil.Process().children():
         proc.kill()
         proc.wait()

@@ -239,10 +239,9 @@ async def main_client(hostname: str, host: str):
 
     reader, writer = await asyncio.open_connection(host=host, port=PORT, family=socket.AF_INET)
 
-    # todo stop speed testing server
-    cmd_utility.stop_server()
-
     # all other work would be done by server
     await handle_connection_to_server(reader, writer, hostname)
+
+    cmd_utility.stop_server()
 
     main_logger.info(f"Servers started!")

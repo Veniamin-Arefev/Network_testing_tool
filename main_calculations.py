@@ -147,9 +147,9 @@ async def main_loop(phys_graph: nx.Graph, vm_mapping_graph: nx.Graph,
 
     vms_to_go = collections.deque()
     done_vms = []
-    vms_to_go.append(vm_mapping_graph.nodes()[0])
+    vms_to_go.append([*vm_mapping_graph.nodes()][0])
 
-    port_iterator = 20_000
+    port_iterator = 50_000
 
     is_error_occurred: bool = False
     while len(vms_to_go) != 0 and not is_error_occurred:
