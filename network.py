@@ -17,6 +17,7 @@ id_to_ips: dict[int, dict[str, list[str]]] = dict()
 hostname_to_id: dict[str, int] = dict()
 id_to_hostname: dict[int, str] = dict()
 
+action: str
 phys_graph: nx.Graph
 vm_mapping_graph: nx.Graph
 
@@ -84,7 +85,7 @@ async def send_start_vms(io_helper: IOHelper, hostnames: list[int], nets: list[l
     await send_dict(io_helper, message_fields)
 
 
-async def try_to_perform_test():
+async def try_to_run_main_loop():
     machine_nodes = list(filter(lambda x: x[1].get("type", "") == "machine", phys_graph.nodes(data=True)))
     if len(id_to_ips) == len(machine_nodes):
         asyncio.create_task(main_calculations.main_loop(
@@ -93,6 +94,7 @@ async def try_to_perform_test():
             id_to_ips=id_to_ips,
             id_to_client=id_to_client,
             hostname_to_id=hostname_to_id,
+            action=action,
             save_file=True,
         ))
 
@@ -105,7 +107,7 @@ async def handle_connection_from_client(reader, writer):
     main_logger.info(f"Client connected from {remote_address}")
 
     io_helper: IOHelper = PlainIOHelper(reader, writer)
-    client_id = None
+    client_id: int = None
     try:
         while True:
             data = await io_helper.receive()
@@ -126,7 +128,7 @@ async def handle_connection_from_client(reader, writer):
                         id_to_client[client_id] = io_helper
                         id_to_ips[client_id] = message_fields["ips"]
 
-                        await try_to_perform_test()
+                        await try_to_run_main_loop()
                     case "measure_answer":
                         nodes = message_fields["nodes"]
                         speed = int(message_fields["speed"])
@@ -215,11 +217,15 @@ async def handle_connection_to_server(reader, writer, hostname: str):
     writer.close()
 
 
-async def main_server(phys_graph_path: pathlib.PosixPath, vm_mapping_graph_path: pathlib.PosixPath):
+async def main_server(phys_graph_path: pathlib.PosixPath, vm_mapping_graph_path: pathlib.PosixPath, cur_action: str):
+    global action
+    action = cur_action
+
     global phys_graph
-    global vm_mapping_graph
     phys_graph = nx.read_gml(phys_graph_path, "id")
-    vm_mapping_graph = nx.read_gml(vm_mapping_graph_path, "id")
+
+    global vm_mapping_graph
+    vm_mapping_graph = nx.read_gml(vm_mapping_graph_path, "id") if vm_mapping_graph_path is not None else None
 
     for node_id, node_data in phys_graph.nodes(data=True):
         hostname_to_id[node_data["hostname"]] = node_id

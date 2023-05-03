@@ -1,8 +1,8 @@
 import ast
 import asyncio
-import collections
 import itertools
 import ipaddress
+from collections import defaultdict, deque
 
 import networkx as nx
 
@@ -10,10 +10,13 @@ import network
 from net_io_helpers import IOHelper
 from constants_and_variables import main_logger
 
+SPEED_RATIO = 2
+DELAY_BIAS = 1.5
+
 
 async def main_loop(phys_graph: nx.Graph, vm_mapping_graph: nx.Graph,
                     id_to_ips: dict[int, dict[str, list[str]]], id_to_client: dict[int, IOHelper],
-                    hostname_to_id: dict[str, int], save_file: bool = False):
+                    hostname_to_id: dict[str, int], action: str, save_file: bool = False):
     def get_networks_for_nodes(nodes: list[int], excluded_nets: list = None):
         cur_networks = sum([
             [
@@ -52,7 +55,7 @@ async def main_loop(phys_graph: nx.Graph, vm_mapping_graph: nx.Graph,
     def get_link_path_nodes(n1, n2, links):
         min_dist = {n1: 0}
         prev_dict = dict()
-        node_deque = collections.deque()
+        node_deque = deque()
         node_deque.append(n1)
         while len(node_deque) != 0:
             prev_node = node_deque.popleft()
@@ -90,7 +93,7 @@ async def main_loop(phys_graph: nx.Graph, vm_mapping_graph: nx.Graph,
     while len(l_nodes_to_pop) != 0:
         cur_team_links = [l_nodes_to_pop.pop()]
         cur_team_machines = []
-        node_deque = collections.deque()
+        node_deque = deque()
         node_deque.extend(phys_graph.neighbors(cur_team_links[0]))
         while len(node_deque) != 0:
             node = node_deque.popleft()
@@ -124,114 +127,149 @@ async def main_loop(phys_graph: nx.Graph, vm_mapping_graph: nx.Graph,
             print("NETWORK DISCOVERY ERROR OCCURRED!")
         teams_nets.append(cur_team_network)
 
-    main_logger.info("Started measurement")
-    # actual testing for teams
-    for team_index, team in enumerate(teams):
-        cur_team_links, cur_team_machines = team
-        for n1, n2 in itertools.combinations(cur_team_machines, 2):
-            await test_speed_in_net(n1, n2, teams_nets[team_index], cur_team_links)
+    if action == "measure":
+        main_logger.info("Started measurement")
+        # actual testing for teams
+        for team_index, team in enumerate(teams):
+            cur_team_links, cur_team_machines = team
+            for n1, n2 in itertools.combinations(cur_team_machines, 2):
+                await test_speed_in_net(n1, n2, teams_nets[team_index], cur_team_links)
 
-    # can test m_only and write to graph
-    for n1, n2 in m_only_edges:
-        await test_speed_direct(n1, n2, teams_nets)
+        # can test m_only and write to graph
+        for n1, n2 in m_only_edges:
+            await test_speed_direct(n1, n2, teams_nets)
 
-    main_logger.info("Done measurement")
-    if save_file:
-        nx.write_gml(phys_graph, "measured.gml")
+        main_logger.info("Done measurement")
+        if save_file:
+            nx.write_gml(phys_graph, "measured.gml")
 
-    main_logger.info("Perform mapping checks")
-    # todo write checks
+    if action == "run_vms":
+        main_logger.info("Perform mapping checks")
 
-    phys_to_vms_id = collections.defaultdict(list)
-    vm_id_to_vm_nets = collections.defaultdict(list)
+        phys_to_vms_id: defaultdict[int, list] = defaultdict(list)
+        vm_id_to_vm_nets = defaultdict(list)
 
-    vms_to_go = collections.deque()
-    done_vms = []
-    vms_to_go.append([*vm_mapping_graph.nodes()][0])
+        vms_to_go = deque()
+        done_vms = []
+        vms_to_go.append([*vm_mapping_graph.nodes()][0])
 
-    port_iterator = 50_000
+        port_iterator = 50_000
 
-    is_error_occurred: bool = False
-    while len(vms_to_go) != 0 and not is_error_occurred:
-        cur_vm = vms_to_go.popleft()
-        for new_vm in vm_mapping_graph.neighbors(cur_vm):
-            if new_vm in done_vms:
-                continue
-            nodes = ast.literal_eval(vm_mapping_graph[cur_vm][new_vm]["phys_hosts"])
-            speed = vm_mapping_graph[cur_vm][new_vm]["speed"]
-            delay = vm_mapping_graph[cur_vm][new_vm]["delay"]
+        is_error_occurred: bool = False
+        while len(vms_to_go) != 0 and not is_error_occurred:
+            cur_vm = vms_to_go.popleft()
+            for new_vm in vm_mapping_graph.neighbors(cur_vm):
+                if new_vm in done_vms:
+                    continue
+                nodes = ast.literal_eval(vm_mapping_graph[cur_vm][new_vm]["phys_hosts"])
+                speed = vm_mapping_graph[cur_vm][new_vm]["speed"]
+                delay = vm_mapping_graph[cur_vm][new_vm]["delay"]
 
-            if len(nodes) == 1:
-                # localhost connection
-                cur_vm_ip = "127.0.0.1"
-                new_vm_ip = "127.0.0.1"
-                port = port_iterator
-                port_iterator += 1
-                speed = speed
-                delay = delay
+                if len(nodes) == 1:
+                    # localhost connection
+                    cur_vm_ip = "127.0.0.1"
+                    new_vm_ip = "127.0.0.1"
+                    speed = speed
+                    delay = delay
 
-            elif len(nodes) == 2:
-                # direct connection
-                phys_node_ids = list(map(lambda x: hostname_to_id[x], nodes))
-                # get net for current machines exclude all link nets
-                cur_net = get_networks_for_nodes(phys_node_ids, teams_nets)[0]
+                elif len(nodes) == 2:
+                    # direct connection
+                    phys_node_ids = list(map(lambda x: hostname_to_id[x], nodes))
+                    # get net for current machines exclude all link nets
+                    cur_net = get_networks_for_nodes(phys_node_ids, teams_nets)[0]
 
-                # get physical host ids
-                cur_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
-                new_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[new_vm]["phys_hostname"]]
+                    # get physical host ids
+                    cur_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
+                    new_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[new_vm]["phys_hostname"]]
 
-                cur_vm_ip = get_node_ip_in_network(cur_vm_host_id, cur_net)
-                new_vm_ip = get_node_ip_in_network(new_vm_host_id, cur_net)
+                    cur_vm_ip = get_node_ip_in_network(cur_vm_host_id, cur_net)
+                    new_vm_ip = get_node_ip_in_network(new_vm_host_id, cur_net)
 
-                port = port_iterator
-                port_iterator += 1
-                speed = speed
-                delay = delay
-            else:
-                # connection via links
-                # direct connection
-                phys_node_ids = list(map(lambda x: hostname_to_id[x], nodes))
-                link_ids = phys_node_ids[1:-1]
-
-                cur_team_index = None
-                for index, team in enumerate(teams):
-                    cur_l_nodes, cur_m_nodes = team
-                    if link_ids in cur_l_nodes:
-                        cur_team_index = index
+                    # check limits
+                    max_speed = phys_graph[cur_vm_host_id][new_vm_host_id]["speed"]
+                    used_speed = phys_graph[cur_vm_host_id][new_vm_host_id].get("used_speed", 0)
+                    if speed * SPEED_RATIO + used_speed > max_speed:
+                        is_error_occurred = True
+                        main_logger.error(f"Bandwidth limit exceeded for virtual edge: {cur_vm} and {new_vm}")
                         break
-                if cur_team_index is None:
-                    main_logger.error("Network not found")
+                    phys_graph[cur_vm_host_id][new_vm_host_id]["used_speed"] = speed * SPEED_RATIO + used_speed
 
-                # get net for current links
-                cur_net = teams_nets[cur_team_index]
+                    path_delay = phys_graph[cur_vm_host_id][new_vm_host_id]["delay"]
+                    if path_delay + DELAY_BIAS > delay:
+                        is_error_occurred = True
+                        main_logger.error(f"The delay condition cannot be met for {cur_vm} and {new_vm}")
+                        break
 
-                # get physical host ids
-                cur_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
-                new_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[new_vm]["phys_hostname"]]
+                    speed = speed
+                    delay = delay - path_delay - DELAY_BIAS
+                else:
+                    # connection via links
+                    # direct connection
+                    phys_node_ids = list(map(lambda x: hostname_to_id[x], nodes))
+                    link_ids = phys_node_ids[1:-1]
 
-                cur_vm_ip = get_node_ip_in_network(cur_vm_host_id, cur_net)
-                new_vm_ip = get_node_ip_in_network(new_vm_host_id, cur_net)
+                    cur_team_index = None
+                    for index, team in enumerate(teams):
+                        cur_l_nodes, cur_m_nodes = team
+                        if link_ids in cur_l_nodes:
+                            cur_team_index = index
+                            break
+                    if cur_team_index is None:
+                        main_logger.error(f"Network not found for nodes {phys_node_ids}")
+                        is_error_occurred = True
+                        break
+
+                    # get net for current links
+                    cur_net = teams_nets[cur_team_index]
+
+                    # get physical host ids
+                    cur_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
+                    new_vm_host_id = hostname_to_id[vm_mapping_graph.nodes[new_vm]["phys_hostname"]]
+
+                    cur_vm_ip = get_node_ip_in_network(cur_vm_host_id, cur_net)
+                    new_vm_ip = get_node_ip_in_network(new_vm_host_id, cur_net)
+
+                    # check limits
+                    for i in range(len(phys_node_ids) - 1):
+                        # phys_graph[phys_node_ids[i]][phys_node_ids[i + 1]]
+                        max_speed = phys_graph[phys_node_ids[i]][phys_node_ids[i + 1]]["speed"]
+                        used_speed = phys_graph[phys_node_ids[i]][phys_node_ids[i + 1]].get("used_speed", 0)
+                        if speed * SPEED_RATIO + used_speed > max_speed:
+                            is_error_occurred = True
+                            main_logger.error(f"Bandwidth limit exceeded for virtual edge: {cur_vm} and {new_vm}")
+                            break
+                        phys_graph[phys_node_ids[i]][phys_node_ids[i + 1]]["used_speed"] = speed * SPEED_RATIO + used_speed
+
+
+                    path_delay = sum([phys_graph[phys_node_ids[i]][phys_node_ids[i + 1]]["delay"]
+                                      for i in range(len(phys_node_ids) - 1)])
+                    if path_delay + DELAY_BIAS > delay:
+                        is_error_occurred = True
+                        main_logger.error(f"The delay condition cannot be met for {cur_vm} and {new_vm}")
+                        break
+
+                    speed = speed
+                    delay = delay - path_delay - DELAY_BIAS
+
                 port = port_iterator
                 port_iterator += 1
-                speed = speed
-                delay = delay
 
-            # source, local, port, speed, delay
-            vm_id_to_vm_nets[cur_vm].append((new_vm_ip, cur_vm_ip, port, speed, delay,))
-            vm_id_to_vm_nets[new_vm].append((cur_vm_ip, new_vm_ip, port, speed, delay,))
+                # source, local, port, speed, delay
+                vm_id_to_vm_nets[cur_vm].append((new_vm_ip, cur_vm_ip, port, speed, delay,))
+                vm_id_to_vm_nets[new_vm].append((cur_vm_ip, new_vm_ip, port, speed, delay,))
 
-        phys_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
-        phys_to_vms_id[phys_id].append(cur_vm)
+            phys_id = hostname_to_id[vm_mapping_graph.nodes[cur_vm]["phys_hostname"]]
+            phys_to_vms_id[phys_id].append(cur_vm)
 
-        done_vms.append(cur_vm)
-    if not is_error_occurred:
-        main_logger.info("Creating VMs")
+            done_vms.append(cur_vm)
+        if not is_error_occurred:
+            main_logger.info("Creating VMs")
 
-        for phys_id, vm_ids in phys_to_vms_id.items():
-            hostnames = [vm_mapping_graph.nodes[vm_id]["hostname"] for vm_id in vm_ids]
-            # list of vm_net_configs
-            nets = [vm_id_to_vm_nets[vm_id] for vm_id in vm_ids]
+            for phys_id, vm_ids in phys_to_vms_id.items():
+                hostnames = [vm_mapping_graph.nodes[vm_id]["hostname"] for vm_id in vm_ids]
+                # list of vm_net_configs
+                nets = [vm_id_to_vm_nets[vm_id] for vm_id in vm_ids]
 
-            await network.send_start_vms(id_to_client[phys_id], hostnames=hostnames, nets=nets)
+                await network.send_start_vms(id_to_client[phys_id], hostnames=hostnames, nets=nets)
 
-        main_logger.info("VMs created.")
+            main_logger.info("VMs created.")
