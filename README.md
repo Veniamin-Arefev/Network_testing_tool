@@ -2,7 +2,7 @@
 
 #### Network testing tool is a tool for testing the performance of a physical network, as well as creating a virtual network from virtual machines.
 
-This tool is designed to work on WAN topology with physical machines and switches. The physical network must be able to handle IP traffic and route it between nodes. All network routes must be symmetric, which means that the nodes through which the data packets pass must match. After measurements, you receive available bandwidth and one way delay for every edge in physical topology. With this data and your needs, you can distribute virtual machines between physical ones and combine them into a virtual topology. And then use this tool to launch virtual machines and combine them into a virtual topology in automatic mode.  
+This tool is designed to work on LAN topology with physical machines and switches. The physical network must be able to handle IP traffic and route it between nodes. All network routes must be symmetric, which means that the nodes through which the data packets pass must match. After measurements, you receive available bandwidth and one way delay for every edge in physical topology. With this data and your needs, you can distribute virtual machines between physical ones and combine them into a virtual topology. And then use this tool to launch virtual machines and combine them into a virtual topology in automatic mode.  
 
 ## **Use cases:**
 
