@@ -53,6 +53,15 @@ the physical topology graph file and `VIRTUAL_GRAPH` is path to the virtual topo
 python3 main.py server --action run_vms --phys_graph PHYSICAL_GRAPH --vm_graph VIRTUAL_GRAPH
 ```
 
+## **Preparation for usage:**
+
+If you want to create virtual topology from virtual machines on different hosts you should first check `cmd_utility.py` file.
+And more precisely next functions:
+* `prepare_for_vms()` - this functions calls once on each host and create base image for machines
+* `start_specific_vm()` - this functions calls every on every virtual machine creation
+
+You may want to replace my hardcoded commands with yours according to your specific environment.
+
 ## **Dependencies:**
 
 Linux Utilities:
